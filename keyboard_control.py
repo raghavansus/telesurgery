@@ -1,14 +1,21 @@
 """
 keyboard_control.py — keyboard-controlled guidewire simulation.
 
-Run interactively through SOFA's own GUI (recommended; matches the
-project's proven workflow):
+Run interactively through SOFA's own GUI (recommended; confirmed
+working end-to-end on this project's local SOFA build). `-l
+SofaPython3` is required on this build because it is not in
+runSofa's default plugin autoload list here -- without it, runSofa
+refuses to load a .py scene file at all:
 
     source scripts/sofa_env.sh
-    runSofa keyboard_control.py
-    runSofa keyboard_control.py --argv --phantom=2 --variant=0
+    runSofa -l SofaPython3 -g glfw keyboard_control.py
+    runSofa -l SofaPython3 -g glfw keyboard_control.py --argv --phantom=2 --variant=0
 
-or standalone (opens a GLFW window directly, no runSofa needed):
+or standalone (opens a GLFW window directly, no runSofa needed).
+KNOWN LIMITATION on this local build: this path opens a real,
+live-animating window but only renders SofaGLFW's background grid,
+not the scene geometry -- prefer the runSofa command above until
+that is root-caused:
 
     source scripts/sofa_env.sh
     python3 keyboard_control.py --phantom 2 --variant 0
@@ -68,6 +75,17 @@ def main():
 
     # Loading SofaGLFW registers the "glfw" GUIManager backend during
     # init; without it only the headless "batch" backend is available.
+    #
+    # KNOWN LIMITATION (this local SOFA build): a scene built and
+    # init'd by a standalone script and then handed to GUIManager's
+    # "glfw" backend opens a real, live-animating window (confirmed:
+    # FPS counter updates), but only draws SofaGLFW's background grid
+    # -- no scene geometry -- with no error. The identical scene
+    # (same build_scene()) renders correctly when loaded the normal
+    # way via `runSofa -l SofaPython3 keyboard_control.py` (confirmed
+    # working: vessel mesh and target markers render correctly). If
+    # you hit a blank grid here, use runSofa instead; see README/
+    # PROGRESS.md.
     root.addObject("RequiredPlugin", pluginName=["SofaGLFW"])
 
     createScene(root)
@@ -77,6 +95,7 @@ def main():
     Sofa.Gui.GUIManager.Init("keyboard_control", "glfw")
     Sofa.Gui.GUIManager.createGUI(root, __file__)
     Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+    print("SOFA GUI WINDOW READY", flush=True)
     Sofa.Gui.GUIManager.MainLoop(root)
     Sofa.Gui.GUIManager.closeGUI()
 

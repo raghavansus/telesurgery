@@ -4,7 +4,12 @@
 #
 #   source scripts/sofa_env.sh
 #   python3 tests/validate_scene.py
-#   runSofa keyboard_control.py
+#   runSofa -l SofaPython3 -g glfw keyboard_control.py
+#
+# -l SofaPython3 is required: on this build it is not in runSofa's
+# default plugin autoload list, so a bare `runSofa keyboard_control.py`
+# fails with "extension (py) is only supported if the plugin
+# SofaPython3 is loaded" (confirmed on this machine).
 #
 # Adjust SOFA_ROOT if the local SOFA build lives elsewhere.
 

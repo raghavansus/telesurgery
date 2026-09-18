@@ -2,10 +2,14 @@
 motion_scale_control.py — Motion Scaling device-controlled guidewire
 simulation.
 
-Run interactively through SOFA's own GUI:
+Run interactively through SOFA's own GUI (recommended; `-l
+SofaPython3` is required on this project's local SOFA build --
+without it runSofa refuses to load a .py scene file. See
+keyboard_control.py's docstring for the standalone-launch rendering
+caveat, which applies here too):
 
     source scripts/sofa_env.sh
-    MS_PORT=/dev/tty.usbserial-XXXX runSofa motion_scale_control.py
+    MS_PORT=/dev/tty.usbserial-XXXX runSofa -l SofaPython3 -g glfw motion_scale_control.py
 
 or standalone:
 
@@ -141,6 +145,10 @@ def main():
 
     root = Sofa.Core.Node("root")
 
+    # See keyboard_control.py's main() for a known limitation of this
+    # standalone launch path on this local SOFA build: prefer
+    # `runSofa -l SofaPython3 motion_scale_control.py` if this window
+    # shows only a blank background grid.
     root.addObject("RequiredPlugin", pluginName=["SofaGLFW"])
 
     createScene(root)
@@ -150,6 +158,7 @@ def main():
     Sofa.Gui.GUIManager.Init("motion_scale_control", "glfw")
     Sofa.Gui.GUIManager.createGUI(root, __file__)
     Sofa.Gui.GUIManager.SetDimension(1080, 1080)
+    print("SOFA GUI WINDOW READY", flush=True)
     Sofa.Gui.GUIManager.MainLoop(root)
     Sofa.Gui.GUIManager.closeGUI()
 
