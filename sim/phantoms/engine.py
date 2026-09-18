@@ -479,6 +479,76 @@ def target_before_end(previous_point, endpoint, distance_before_end=8.0):
 
 
 # ================================================================
+# ROUTE LENGTH
+#
+# The guidewire's total physical length (shaft + tip) is fixed
+# (~180mm). If a phantom's longest modeled route from the deployment
+# origin to any branch's terminal waypoint is shorter than that, a
+# user who keeps inserting will push the tip out through the open
+# (uncapped) end of the vessel once they exceed that route's length —
+# which looks identical to "escaping through the wall" but is really
+# just running out of modeled anatomy. build_scene() uses this to cap
+# the controller's max insertable depth at the network's own longest
+# route, so full insertion always lands at (not past) a vessel end.
+# ================================================================
+
+def compute_longest_route_length(network):
+    """
+    Paths are authored trunk-first, branches after, each branch
+    starting exactly at an earlier path's endpoint (shared
+    coordinate) -- so a single forward pass chaining cumulative
+    distance by matching endpoint coordinates covers every phantom
+    in sim/phantoms/networks.py. Returns the longest cumulative
+    distance, in mm, from the first path's first waypoint to any
+    waypoint in the network.
+    """
+
+    def point_key(point):
+        return (round(point[0], 4), round(point[1], 4), round(point[2], 4))
+
+    cumulative = {}
+    longest = 0.0
+
+    pending = list(network["paths"])
+
+    # Repeat until no path in `pending` can be resolved anymore --
+    # handles paths listed before the path they connect to, though
+    # every phantom currently defined is already in dependency order.
+    progress = True
+    while pending and progress:
+
+        progress = False
+        still_pending = []
+
+        for path in pending:
+
+            points = [point for point, _radius in path]
+            start_key = point_key(points[0])
+
+            if start_key in cumulative:
+                base = cumulative[start_key]
+            elif not cumulative:
+                base = 0.0
+            else:
+                still_pending.append(path)
+                continue
+
+            distance = base
+            cumulative[start_key] = base
+
+            for i in range(len(points) - 1):
+                distance += magnitude(subtract(points[i + 1], points[i]))
+                cumulative[point_key(points[i + 1])] = distance
+
+            longest = max(longest, distance)
+            progress = True
+
+        pending = still_pending
+
+    return longest
+
+
+# ================================================================
 # MIRROR TRANSFORM
 #
 # Four standardized presentation variants per phantom:

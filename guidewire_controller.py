@@ -23,6 +23,33 @@ class GuidewireCommandController(Sofa.Core.Controller):
             rotation_step_degrees
         )
 
+        # ========================================================
+        # KEYBOARD INPUT RATE LIMITING
+        #
+        # A single physical keypress can generate several
+        # onKeypressedEvent calls before the next physics step runs
+        # (OS key-repeat, or several distinct keys pressed close
+        # together). If those were all applied to xtip/rotation
+        # instantly, a burst could move the guidewire much farther in
+        # one physics step than the collision system's alarm/contact
+        # margins are sized for, letting the tip tunnel through the
+        # thin vessel wall instead of being stopped by it.
+        #
+        # Keyboard-driven motion is therefore queued here and drained
+        # by onAnimateBeginEvent at most one step's worth of motion
+        # per physics step, so a burst of keypresses gets spread
+        # across several physics steps instead of jumping in one.
+        # apply_command()/apply_translation()/apply_rotation() remain
+        # instant, unrate-limited calls for direct/programmatic use
+        # (tests, motion_scale_control's absolute set_* calls).
+        # ========================================================
+
+        self.max_translation_per_step = translation_step
+        self.max_rotation_per_step = self.rotation_step
+
+        self._pending_translation = 0.0
+        self._pending_rotation = 0.0
+
     # ============================================================
     # MAIN COMMAND INTERFACE
     #
@@ -231,6 +258,50 @@ class GuidewireCommandController(Sofa.Core.Controller):
         )
 
     # ============================================================
+    # RATE-LIMITED QUEUE DRAIN
+    #
+    # Called once per physics step. Applies at most
+    # max_translation_per_step / max_rotation_per_step of whatever
+    # keyboard motion is pending, leaving the remainder queued for
+    # the next step(s). See __init__ for why this exists.
+    # ============================================================
+
+    def onAnimateBeginEvent(
+        self,
+        event
+    ):
+
+        if (
+            self._pending_translation == 0.0
+            and self._pending_rotation == 0.0
+        ):
+            return
+
+        step_translation = max(
+            -self.max_translation_per_step,
+            min(
+                self.max_translation_per_step,
+                self._pending_translation
+            )
+        )
+
+        step_rotation = max(
+            -self.max_rotation_per_step,
+            min(
+                self.max_rotation_per_step,
+                self._pending_rotation
+            )
+        )
+
+        self._pending_translation -= step_translation
+        self._pending_rotation -= step_rotation
+
+        self.apply_command(
+            translation=step_translation,
+            rotation=step_rotation
+        )
+
+    # ============================================================
     # TEMPORARY KEYBOARD INPUT
     #
     # Ctrl + Shift + D
@@ -247,6 +318,10 @@ class GuidewireCommandController(Sofa.Core.Controller):
     #
     # Keyboard control can be removed later when the physical
     # input device is integrated.
+    #
+    # Presses are queued (see onAnimateBeginEvent), not applied
+    # instantly, so a burst of key-repeat events can't tunnel the
+    # guidewire through the vessel wall in a single physics step.
     # ============================================================
 
     def onKeypressedEvent(
@@ -277,11 +352,8 @@ class GuidewireCommandController(Sofa.Core.Controller):
 
         if key == "d":
 
-            self.apply_command(
-                translation=
-                self.translation_step,
-
-                rotation=0.0
+            self._pending_translation += (
+                self.translation_step
             )
 
         # --------------------------------------------------------
@@ -290,11 +362,8 @@ class GuidewireCommandController(Sofa.Core.Controller):
 
         elif key == "a":
 
-            self.apply_command(
-                translation=
-                -self.translation_step,
-
-                rotation=0.0
+            self._pending_translation -= (
+                self.translation_step
             )
 
         # --------------------------------------------------------
@@ -303,10 +372,7 @@ class GuidewireCommandController(Sofa.Core.Controller):
 
         elif key == "e":
 
-            self.apply_command(
-                translation=0.0,
-
-                rotation=
+            self._pending_rotation += (
                 self.rotation_step
             )
 
@@ -316,9 +382,6 @@ class GuidewireCommandController(Sofa.Core.Controller):
 
         elif key == "q":
 
-            self.apply_command(
-                translation=0.0,
-
-                rotation=
-                -self.rotation_step
+            self._pending_rotation -= (
+                self.rotation_step
             )

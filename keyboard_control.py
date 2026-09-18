@@ -2,20 +2,28 @@
 keyboard_control.py — keyboard-controlled guidewire simulation.
 
 Run interactively through SOFA's own GUI (recommended; confirmed
-working end-to-end on this project's local SOFA build). `-l
-SofaPython3` is required on this build because it is not in
-runSofa's default plugin autoload list here -- without it, runSofa
-refuses to load a .py scene file at all:
+working end-to-end -- vessel, targets, AND guidewire all visible --
+by both an agent screenshot and a live user in this project). Two
+flags matter on this local SOFA build:
+
+  -l SofaPython3   required -- not in runSofa's default plugin
+                   autoload list here; without it runSofa refuses to
+                   load a .py scene file at all.
+  -g imgui         required -- `-g glfw` opens a real, live-animating
+                   window (physics runs correctly, key presses do
+                   move the wire) but silently renders ONLY its
+                   background grid: no vessel, no guidewire, no
+                   error. `-g imgui` renders everything correctly and
+                   adds a full editor UI (scene graph, viewport, log).
 
     source scripts/sofa_env.sh
-    runSofa -l SofaPython3 -g glfw keyboard_control.py
-    runSofa -l SofaPython3 -g glfw keyboard_control.py --argv --phantom=2 --variant=0
+    runSofa -l SofaPython3 -g imgui keyboard_control.py
+    runSofa -l SofaPython3 -g imgui keyboard_control.py --argv --phantom=2 --variant=0
 
-or standalone (opens a GLFW window directly, no runSofa needed).
-KNOWN LIMITATION on this local build: this path opens a real,
-live-animating window but only renders SofaGLFW's background grid,
-not the scene geometry -- prefer the runSofa command above until
-that is root-caused:
+or scripts/launch_keyboard_control.sh --phantom=2 --variant=0
+
+or standalone (opens a GLFW window directly, no runSofa needed) --
+same `-g glfw` blank-render limitation as above applies here too:
 
     source scripts/sofa_env.sh
     python3 keyboard_control.py --phantom 2 --variant 0

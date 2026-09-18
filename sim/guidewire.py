@@ -218,16 +218,19 @@ def add_guidewire(rootNode, deployment_origin_z=-8.0):
 
     visual = wire.addChild("GuidewireVisual")
 
+    # Bright, high-contrast color deliberately chosen (not anatomical
+    # gray) so the thin 0.89mm wire stays visible against the pale
+    # translucent vessel across different renderers/lighting setups.
     visual.addObject(
         "OglModel",
         name="Visual",
-        color=[0.25, 0.27, 0.30, 1.0],
+        color=[0.85, 0.10, 0.10, 1.0],
         material=(
             "texture "
-            "Ambient 1 0.20 0.20 0.20 1.0 "
-            "Diffuse 1 0.55 0.57 0.60 1.0 "
-            "Specular 1 0.95 0.95 0.95 1.0 "
-            "Emissive 0 0.0 0.0 0.0 0.0 "
+            "Ambient 1 0.40 0.05 0.05 1.0 "
+            "Diffuse 1 0.85 0.10 0.10 1.0 "
+            "Specular 1 0.95 0.60 0.60 1.0 "
+            "Emissive 1 0.35 0.02 0.02 1.0 "
             "Shininess 1 80"
         ),
     )

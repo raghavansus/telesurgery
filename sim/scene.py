@@ -11,7 +11,10 @@ import os
 
 from guidewire_controller import GuidewireCommandController
 from sim.phantoms import get_phantom, get_phantom_info, PHANTOMS
-from sim.phantoms.engine import create_vessel_from_network
+from sim.phantoms.engine import (
+    create_vessel_from_network,
+    compute_longest_route_length,
+)
 from sim.guidewire import add_guidewire
 
 DEFAULT_PHANTOM_ID = 0
@@ -97,8 +100,8 @@ def configure_root(rootNode):
 
     rootNode.addObject(
         "LocalMinDistance",
-        alarmDistance=0.5,
-        contactDistance=0.2,
+        alarmDistance=2.0,
+        contactDistance=1.0,
         angleCone=0.5,
     )
 
@@ -158,10 +161,25 @@ def build_scene(
         deployment_origin_z=deployment_origin_z,
     )
 
+    # Cap insertable depth at this phantom's own longest modeled
+    # route (minus a small safety margin) so full insertion always
+    # lands at, not past, a vessel end. The physical guidewire
+    # (~180mm) is longer than every phantom's longest route; without
+    # this cap, over-insertion pushes the tip out through the open
+    # end of whichever branch it's in -- which looks identical to
+    # escaping through a side wall but is really just running out of
+    # modeled anatomy. See compute_longest_route_length()'s docstring.
+    longest_route = compute_longest_route_length(network)
+    route_safety_margin = 3.0
+    max_insertable_length = min(
+        total_wire_length,
+        max(0.0, longest_route - route_safety_margin),
+    )
+
     command_controller = GuidewireCommandController(
         name="GuidewireCommandController",
         deploy_controller=deploy_controller,
-        max_length=total_wire_length,
+        max_length=max_insertable_length,
         translation_step=translation_step,
         rotation_step_degrees=rotation_step_degrees,
     )
@@ -177,7 +195,10 @@ def build_scene(
         "SCENE | "
         f"phantom={phantom_id} ({phantom_info['name']}) | "
         f"variant={variant} | "
-        f"targets={list(network['targets'].keys())}"
+        f"targets={list(network['targets'].keys())} | "
+        f"longest route={longest_route:.1f}mm | "
+        f"max insertable={max_insertable_length:.1f}mm "
+        f"(wire length={total_wire_length:.1f}mm)"
     )
 
     return rootNode
